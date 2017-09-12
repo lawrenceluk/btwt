@@ -9,6 +9,8 @@ import React, { Component } from 'react';
 class App extends Component {
   constructor(props) {
     super(props);
+    // fill for unsupported browsers
+    Object.values = (obj) => Object.keys(obj).map(key => obj[key]);
 
     const canStore = typeof(Storage) !== 'undefined';
     let savedCoin = canStore && localStorage.getItem('buyCoin') ? localStorage.getItem('buyCoin') : '';
@@ -300,7 +302,7 @@ class App extends Component {
       <div className='page-exchange'>
         <section className='exchange-header'>
           <h1>{title}</h1>
-          <p>A simple cryptocurrency exchange rate comparison</p>
+          <p>A simple cryptocurrency arbitrage tool</p>
         </section>
         <Inputs
           buyMode={this.state.buyMode}
