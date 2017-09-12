@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import './App.css';
 import 'react-select/dist/react-select.css';
-import Select from 'react-select';
+import Select from 'react-select/dist/react-select';
 import { string, object, func, array, bool } from 'prop-types'
 
 class Inputs extends Component {
