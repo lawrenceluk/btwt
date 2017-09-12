@@ -196,10 +196,15 @@ class App extends Component {
   }
 
   renderModeSwitcher() {
-    return this.state.buyMode ? (
-      <a href='#sell'>Sell this, for that</a>
+    const button = this.state.buyMode ? (
+      <a href='#sell'><button>Sell this, for that</button></a>
     ) : (
-      <a href='#buy'>Buy this, with that</a>
+      <a href='#buy'><button>Buy this, with that</button></a>
+    );
+    return (
+      <div className='exchange-mode-switch'>
+        {button}
+      </div>
     );
   }
 
@@ -319,6 +324,16 @@ class App extends Component {
         </div>
         {this.renderModeSwitcher()}
         <footer>
+          <div>
+            <p>
+              Your donations help pay for server time!
+            </p>
+            <p>
+              <strong>BTC:</strong> <code>18G9A5z2opkncGMLFnZTL8J2EvkUy1c8bE</code><br/>
+              <strong>ETH:</strong> <code>0xB72C1bf228096f7452150D493B04547538b0188e</code><br/>
+              <strong>LTC:</strong> <code>LUwm8KRumrGNDwuMDyB1rLJwKv5zCcu3Ab</code><br/>
+            </p>
+          </div>
           <small>Data sourced from <a href='https://www.cryptocompare.com/api' rel='noopener noreferrer' target='_blank'>CryptoCompare</a></small>
         </footer>
       </div>
