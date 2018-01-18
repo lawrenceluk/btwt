@@ -54,6 +54,16 @@ footer {
   margin-bottom: 20px;
 }
 
+footer .social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+footer .social > div {
+  margin: 16px;
+}
+
 footer p {
   line-height: 1.75;
 }

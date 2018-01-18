@@ -395,6 +395,12 @@ class App extends Component {
         </div>
         {this.renderModeSwitcher()}
         <footer>
+          <div className='social'>
+            <a className="twitter-share-button" href="https://twitter.com/intent/tweet?text=Buy%20This%20With%20That%20-%20the%20simple%20cryptocurrency%20arbitrage%20calculator">
+              <span className='fa fa-twitter'></span>
+            </a>
+            <div className="fb-share-button" data-href="https://buythiswiththat.com/" data-layout="button" data-size="small" data-mobile-iframe="true"><a className="fb-xfbml-parse-ignore" rel='noopener noreferrer' target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fbuythiswiththat.com%2F&amp;src=sdkpreparse">Share</a></div>
+          </div>
           <div>
             <p className='footer-thanks'>
               If this tool has helped you, please leave a tip!
