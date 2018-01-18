@@ -2,9 +2,14 @@
 import './App.css';
 import axios from 'axios';
 import coins from './coinlist.json';
+import exchanges from './exchanges.json'
 import Inputs from './Inputs.js';
 import Select from 'react-select';
 import React, { Component } from 'react';
+
+// in src
+// curl -H "Accept: application/json" -H "Content-Type: application/json" -X GET https://www.cryptocompare.com/api/data/coinlist/ > coinlist.json
+// curl -H "Accept: application/json" -H "Content-Type: application/json" -X GET https://min-api.cryptocompare.com/data/all/exchanges > exchanges.json
 
 class App extends Component {
   constructor(props) {
@@ -14,6 +19,7 @@ class App extends Component {
 
     const canStore = typeof(Storage) !== 'undefined';
     let savedCoin = canStore && localStorage.getItem('buyCoin') ? localStorage.getItem('buyCoin') : '';
+    const savedExchange = canStore && localStorage.getItem('exchange') ? localStorage.getItem('exchange') : 'Any';
     const savedCurrency = canStore && localStorage.getItem('currency') ? localStorage.getItem('currency') : 'USD';
     const savedSellAmount = canStore && localStorage.getItem('sellAmount') ? localStorage.getItem('sellAmount') : '100';
     const compareCoins = canStore && localStorage.getItem('buyCompareCoins') ?
@@ -26,6 +32,7 @@ class App extends Component {
         image: c.ImageUrl
       };
     }).sort(function (a, b) { return a.order - b.order; });
+
     if (savedCoin) {
       const matchingCoin = coinList.filter((c) => { return c.value === savedCoin; })
       savedCoin = (matchingCoin.length) ? matchingCoin[0] : false;
@@ -33,13 +40,16 @@ class App extends Component {
 
     this.state = {
       coins: coinList,
+      exchange: savedExchange,
       selectedCoin: savedCoin || coinList[0],
       buyMode: window.location.hash !== '#sell',
       exchangeTypes: compareCoins,
       localCurrency: savedCurrency,
       sellAmount: savedSellAmount,
       coinResponse: {},
-      currencyResponse: {}
+      currencyResponse: {},
+      exchanges: exchanges,
+      error: false
     };
     document.title =  window.location.hash !== '#sell' ? 'Buy This With That' : 'Sell This For That';
   }
@@ -78,6 +88,16 @@ class App extends Component {
     }, this.refresh.bind(this));
   }
 
+  updateExchange(val) {
+    val = (val && val.value) ? val.value : 'Any';
+    // update store
+    localStorage.setItem('exchange', val);
+    // update state
+    this.setState({
+      exchange: val
+    }, this.refresh.bind(this));
+  }
+
   updateExchangeTypes(val) {
     if (!val) { return; }
     // update store
@@ -104,17 +124,20 @@ class App extends Component {
     const localCurrency = this.state.localCurrency;
 
     const matches = this.state.coinResponse.DISPLAY[selectedCoin.value];
+
     // transform price into something parsable
     Object.values(matches).forEach((data) => {
       data.priceFloat = parseFloat(data.PRICE.replace(/[^\d.-]/g, ''));
     });
-    if (this.state.buyMode) {
-      matches[localCurrency].buyingPower = (1000 / matches[localCurrency].priceFloat).toFixed(6);
-    } else {
-      matches[localCurrency].buyingPower = (matches[localCurrency].priceFloat).toFixed(6) * (parseFloat(this.state.sellAmount) || 1);
+    if (matches[localCurrency]) {
+      if (this.state.buyMode) {
+        matches[localCurrency].buyingPower = (1000 / matches[localCurrency].priceFloat).toFixed(6);
+      } else {
+        matches[localCurrency].buyingPower = (matches[localCurrency].priceFloat).toFixed(6) * (parseFloat(this.state.sellAmount) || 1);
+      }
+      matches[localCurrency].localRate = 1;
+      matches[localCurrency].symbol = localCurrency;
     }
-    matches[localCurrency].localRate = 1;
-    matches[localCurrency].symbol = localCurrency;
 
     // buying power: how much can 1000 usd buy
     var conversions = this.state.currencyResponse[localCurrency];
@@ -144,10 +167,36 @@ class App extends Component {
     })
     const selectedCoin = this.state.selectedCoin;
     const localCurrency = this.state.localCurrency;
-    const convertTo = this.state.localCurrency + ',' + this.state.exchangeTypes;
+    const exchange = (this.state.exchange && this.state.exchange !== 'Any') ? ('&e=' + this.state.exchange) : '';
+    let convertTo = (this.state.localCurrency + ',' + this.state.exchangeTypes).split(',');
 
-    axios.get('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=' + selectedCoin.value + '&tsyms=' + convertTo)
+    if (this.state.exchange && this.state.exchange !== 'Any') {
+      const availablePairs = this.state.exchanges[this.state.exchange] || {};
+      if (selectedCoin.value in availablePairs) {
+        convertTo = convertTo.filter(function (val) {
+          return availablePairs[selectedCoin.value].indexOf(val) > -1;
+        });
+      }
+    }
+
+    if (convertTo.length === 0) {
+      this.setState({
+        error: true,
+        loading: false
+      });
+      return;
+    }
+
+    axios.get('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=' + selectedCoin.value + '&tsyms=' + convertTo.join(',') + exchange)
     .then((res) => {
+      if (res.data.Response && res.data.Response === 'Error') {
+        this.setState({
+          loading: false,
+          error: true
+        });
+        return;
+      }
+
       const matches = res.data.DISPLAY[selectedCoin.value];
 
       axios.get('https://min-api.cryptocompare.com/data/pricemulti?fsyms=' + localCurrency + '&tsyms=' + Object.keys(matches).join(','))
@@ -164,6 +213,7 @@ class App extends Component {
         });
 
         this.setState({
+          error: false,
           loading: false,
           coinResponse: res.data,
           currencyResponse: res2.data
@@ -214,6 +264,21 @@ class App extends Component {
     if (!this.state.coins) {
       return this.renderLoading();
     }
+    if (this.state.error) {
+      if (this.state.exchange && this.state.exchange !== 'Any') {
+        return (
+          <div className='exchange-result-error'>
+            {this.state.exchange} does not have trading pairs for {this.state.selectedCoin.label}.
+          </div>
+        );
+      } else if (!this.state.loading) {
+        return (
+          <div className='exchange-result-error'>
+            Error retrieving results.
+          </div>
+        );
+      }
+    }
 
     const matches = this.state.matches;
     if (!matches || Object.keys(matches).length === 0) { return false; }
@@ -221,6 +286,7 @@ class App extends Component {
     const results = Object.keys(matches).map((sym, i) => {
       const of = sym === this.state.localCurrency ? '' : ' of ' + sym;
       const best = matches[sym].best ? 'exchange-result best' : 'exchange-result';
+      const market = matches[sym].LASTMARKET || matches[sym].MARKET;
 
       let coinImage;
       if (sym !== this.state.localCurrency) {
@@ -269,7 +335,7 @@ class App extends Component {
                 <div><strong>{matches[sym].LOW24HOUR}</strong></div>
               </div>
               <div className='exchange-result-details'>
-                <div>Market: {matches[sym].LASTMARKET}</div>
+                <div>Market: {market}</div>
                 <small>Updated {matches[sym].LASTUPDATE.toLowerCase()}</small>
               </div>
             </div>
@@ -302,17 +368,20 @@ class App extends Component {
       <div className='page-exchange'>
         <section className='exchange-header'>
           <h1>{title}</h1>
-          <p>A simple cryptocurrency arbitrage tool</p>
+          <p>Discover optimal cryptocurrency trading pairs</p>
         </section>
         <Inputs
           buyMode={this.state.buyMode}
           coins={this.state.coins}
+          exchanges={this.state.exchanges}
+          exchange={this.state.exchange}
           selectedCoin={this.state.selectedCoin}
           updateCoin={this.updateCoin.bind(this)}
           exchangeTypes={this.state.exchangeTypes}
           updateExchangeTypes={this.updateExchangeTypes.bind(this)}
           sellAmount={this.state.sellAmount}
           updateSellAmount={this.updateSellAmount.bind(this)}
+          updateExchange={this.updateExchange.bind(this)}
         />
         {this.renderResults()}
         <div className='exchange-currency'>
@@ -327,8 +396,8 @@ class App extends Component {
         {this.renderModeSwitcher()}
         <footer>
           <div>
-            <p>
-              Your donations help pay for server time!
+            <p className='footer-thanks'>
+              If this tool has helped you, please leave a tip!
             </p>
             <p>
               <strong>BTC:</strong> <code>18G9A5z2opkncGMLFnZTL8J2EvkUy1c8bE</code><br/>
@@ -336,7 +405,7 @@ class App extends Component {
               <strong>LTC:</strong> <code>LUwm8KRumrGNDwuMDyB1rLJwKv5zCcu3Ab</code><br/>
             </p>
           </div>
-          <small>Data sourced from <a href='https://www.cryptocompare.com/api' rel='noopener noreferrer' target='_blank'>CryptoCompare</a></small>
+          <small>Data sourced from <a href='https://www.cryptocompare.com/api' rel='noopener noreferrer' target='_blank'>CryptoCompare</a>. Not all trading pairs shown are available in actuality. Data shown is not guaranteed to be accurate. Use this tool at your own discretion.</small>
         </footer>
       </div>
     );

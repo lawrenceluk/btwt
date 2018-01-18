@@ -7,13 +7,16 @@ import { string, object, func, array, bool } from 'prop-types'
 class Inputs extends Component {
   static propTypes = {
     coins: array,
+    exchange: object,
+    exchanges: object,
     exchangeTypes: string,
     sellAmount: string,
     selectedCoin: object,
     updateExchangeTypes: func,
     updateCoin: func,
     updateSellAmount: func,
-    buyMode: bool
+    buyMode: bool,
+    updateExchange: func
   }
 
   render() {
@@ -24,6 +27,23 @@ class Inputs extends Component {
     const sellAmount = this.props.buyMode ? false : (
       <input type='number' min='0' value={this.props.sellAmount} onChange={this.props.updateSellAmount} className='exchange-currency-amount' />
     );
+
+    const exchangeNames = [{
+      value: 'Any',
+      label: 'Any'
+    }].concat(Object.keys(this.props.exchanges).map((e) => {
+      return {
+        value: e,
+        label: e
+      };
+    }));
+
+    const exchangeDisclaimer = (this.props.exchange && this.props.exchange !== 'Any') ? (
+      <div className='exchange-disclaimer'>
+        DISCLAIMER: data is sourced from CryptoCompare and may be missing or inaccurate. Not all trading pairs
+        are available, even if you see them on the exchange.
+      </div>
+    ) : false;
 
     return (
       <div className='exchange-input'>
@@ -49,6 +69,17 @@ class Inputs extends Component {
             clearable={false}
           />
         </div>
+        <br/>
+        <div>on the exchange:
+          <Select
+            className='exchange-currency-types'
+            options={exchangeNames}
+            value={this.props.exchange}
+            onChange={this.props.updateExchange}
+            clearable={false}
+          />
+        </div>
+        {exchangeDisclaimer}
       </div>
     );
   }
