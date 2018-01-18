@@ -7,10 +7,6 @@ import Inputs from './Inputs.js';
 import Select from 'react-select';
 import React, { Component } from 'react';
 
-// in src
-// curl -H "Accept: application/json" -H "Content-Type: application/json" -X GET https://www.cryptocompare.com/api/data/coinlist/ > coinlist.json
-// curl -H "Accept: application/json" -H "Content-Type: application/json" -X GET https://min-api.cryptocompare.com/data/all/exchanges > exchanges.json
-
 class App extends Component {
   constructor(props) {
     super(props);
@@ -24,14 +20,14 @@ class App extends Component {
     const savedSellAmount = canStore && localStorage.getItem('sellAmount') ? localStorage.getItem('sellAmount') : '100';
     const compareCoins = canStore && localStorage.getItem('buyCompareCoins') ?
      (localStorage.getItem('buyCompareCoins') || 'BTC,ETH') : 'BTC,ETH';
-    const coinList = Object.values(coins.Data).map(function (c) {
+    const coinList = Object.values(coins.Data).map((c) => {
       return {
         value: c.Name,
         label: c.CoinName,
         order: parseInt(c.SortOrder, 10),
         image: c.ImageUrl
       };
-    }).sort(function (a, b) { return a.order - b.order; });
+    }).sort((a, b) => { return a.order - b.order; });
 
     if (savedCoin) {
       const matchingCoin = coinList.filter((c) => { return c.value === savedCoin; })
@@ -49,7 +45,8 @@ class App extends Component {
       coinResponse: {},
       currencyResponse: {},
       exchanges: exchanges,
-      error: false
+      error: false,
+      availablePairs: []
     };
     document.title =  window.location.hash !== '#sell' ? 'Buy This With That' : 'Sell This For That';
   }
@@ -123,12 +120,20 @@ class App extends Component {
     const selectedCoin = this.state.selectedCoin;
     const localCurrency = this.state.localCurrency;
 
-    const matches = this.state.coinResponse.DISPLAY[selectedCoin.value];
+    const matches = this.state.coinResponse.RAW[selectedCoin.value];
 
     // transform price into something parsable
     Object.values(matches).forEach((data) => {
-      data.priceFloat = parseFloat(data.PRICE.replace(/[^\d.-]/g, ''));
+      data.priceFloat = parseFloat(data.PRICE);
     });
+    console.log(matches);
+    Object.keys(matches).forEach((key) => {
+      // delete 0s
+      if (matches[key].VOLUME24HOUR === 0) {
+        delete matches[key];
+      }
+    });
+
     if (matches[localCurrency]) {
       if (this.state.buyMode) {
         matches[localCurrency].buyingPower = (1000 / matches[localCurrency].priceFloat).toFixed(6);
@@ -142,13 +147,15 @@ class App extends Component {
     // buying power: how much can 1000 usd buy
     var conversions = this.state.currencyResponse[localCurrency];
     Object.keys(conversions).forEach((sym) => {
-      if (this.state.buyMode) {
-        matches[sym].buyingPower = ((conversions[sym]*1000) / matches[sym].priceFloat).toFixed(6);
-      } else {
-        matches[sym].buyingPower = ((1 / conversions[sym]) * matches[sym].priceFloat).toFixed(6) * (parseFloat(this.state.sellAmount) || 1);
+      if (matches[sym]) {
+        if (this.state.buyMode) {
+          matches[sym].buyingPower = ((conversions[sym]*1000) / matches[sym].priceFloat).toFixed(6);
+        } else {
+          matches[sym].buyingPower = ((1 / conversions[sym]) * matches[sym].priceFloat).toFixed(6) * (parseFloat(this.state.sellAmount) || 1);
+        }
+        matches[sym].localRate = conversions[sym];
+        matches[sym].symbol = sym;
       }
-      matches[sym].localRate = conversions[sym];
-      matches[sym].symbol = sym;
     });
 
     // get best buying power
@@ -173,7 +180,10 @@ class App extends Component {
     if (this.state.exchange && this.state.exchange !== 'Any') {
       const availablePairs = this.state.exchanges[this.state.exchange] || {};
       if (selectedCoin.value in availablePairs) {
-        convertTo = convertTo.filter(function (val) {
+        this.setState({
+          availablePairs: availablePairs[selectedCoin.value]
+        });
+        convertTo = convertTo.filter((val) => {
           return availablePairs[selectedCoin.value].indexOf(val) > -1;
         });
       }
@@ -219,11 +229,11 @@ class App extends Component {
           currencyResponse: res2.data
         }, this.recalculate.bind(this));
       })
-      .catch(function (error) {
+      .catch((error) => {
         console.warn(error);
       });
     })
-    .catch(function (error) {
+    .catch((error) => {
       console.warn(error);
     });
   }
@@ -268,7 +278,7 @@ class App extends Component {
       if (this.state.exchange && this.state.exchange !== 'Any') {
         return (
           <div className='exchange-result-error'>
-            {this.state.exchange} does not have trading pairs for {this.state.selectedCoin.label}.
+            {this.state.exchange} does not have trading pairs for {this.state.exchangeTypes.split(',').join(', ')}.
           </div>
         );
       } else if (!this.state.loading) {
@@ -290,7 +300,7 @@ class App extends Component {
 
       let coinImage;
       if (sym !== this.state.localCurrency) {
-        const coin = this.state.coins.filter(function (c) { return c.value === sym; })[0];
+        const coin = this.state.coins.filter((c) => { return c.value === sym; })[0];
         if (!coin) {
           return false;
         }
@@ -317,7 +327,6 @@ class App extends Component {
           <h3 className='exchange-result-title'>{parseFloat(matches[sym].buyingPower).toFixed(4)} {this.state.localCurrency}</h3>
         </div>
       );
-
       return (
         <div className={best} key={i}>
           <div className='exchange-result-header'>
@@ -336,7 +345,7 @@ class App extends Component {
               </div>
               <div className='exchange-result-details'>
                 <div>Market: {market}</div>
-                <small>Updated {matches[sym].LASTUPDATE.toLowerCase()}</small>
+                <small>Updated {(new Date(matches[sym].LASTUPDATE*1000)).toLocaleTimeString()}</small>
               </div>
             </div>
           </div>
@@ -382,6 +391,7 @@ class App extends Component {
           sellAmount={this.state.sellAmount}
           updateSellAmount={this.updateSellAmount.bind(this)}
           updateExchange={this.updateExchange.bind(this)}
+          availablePairs={this.state.availablePairs}
         />
         {this.renderResults()}
         <div className='exchange-currency'>

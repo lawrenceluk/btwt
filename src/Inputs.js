@@ -7,7 +7,7 @@ import { string, object, func, array, bool } from 'prop-types'
 class Inputs extends Component {
   static propTypes = {
     coins: array,
-    exchange: object,
+    exchange: string,
     exchanges: object,
     exchangeTypes: string,
     sellAmount: string,
@@ -16,7 +16,8 @@ class Inputs extends Component {
     updateCoin: func,
     updateSellAmount: func,
     buyMode: bool,
-    updateExchange: func
+    updateExchange: func,
+    availablePairs: array
   }
 
   render() {
@@ -43,7 +44,21 @@ class Inputs extends Component {
         DISCLAIMER: data is sourced from CryptoCompare and may be missing or inaccurate. Not all trading pairs
         are available, even if you see them on the exchange.
       </div>
-    ) : false;
+    ) : <div className='exchange-disclaimer'>
+        DISCLAIMER: direct trading pairs may not be available as shown.
+      </div>;
+
+    let exchangePairs = false;
+    if (this.props.exchange && this.props.exchange !== 'Any' && this.props.availablePairs) {
+      const pairs = this.props.availablePairs.map((p) => {
+        return this.props.selectedCoin.value + '/' + p;
+      }).join(', ');
+      exchangePairs = (
+        <div className='exchange-pairs'>
+          {this.props.exchange} pairs: <strong>{pairs}</strong>
+        </div>
+      );
+    }
 
     return (
       <div className='exchange-input'>
@@ -79,6 +94,7 @@ class Inputs extends Component {
             clearable={false}
           />
         </div>
+        {exchangePairs}
         {exchangeDisclaimer}
       </div>
     );

@@ -20,11 +20,26 @@
   right: 32px;
 }
 
+.exchange-output {
+  min-height: 180px;
+  transition: 0.2s ease;
+}
+
 .exchange-disclaimer {
   color: #888;
   font-size: 12px;
   margin: 12px auto -24px auto;
   max-width: 400px;
+}
+
+.exchange-pairs {
+  background-color: #383838;
+  border-radius: 5px;
+  color: white;
+  display: inline-block;
+  font-size: 14px;
+  margin-top: 18px;
+  padding: 12px;
 }
 
 button {
