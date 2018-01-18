@@ -126,7 +126,6 @@ class App extends Component {
     Object.values(matches).forEach((data) => {
       data.priceFloat = parseFloat(data.PRICE);
     });
-    console.log(matches);
     Object.keys(matches).forEach((key) => {
       // delete 0s
       if (matches[key].VOLUME24HOUR === 0) {
@@ -274,7 +273,7 @@ class App extends Component {
     if (!this.state.coins) {
       return this.renderLoading();
     }
-    if (this.state.error) {
+    if (this.state.error || !this.state.matches) {
       if (this.state.exchange && this.state.exchange !== 'Any') {
         return (
           <div className='exchange-result-error'>
@@ -284,7 +283,7 @@ class App extends Component {
       } else if (!this.state.loading) {
         return (
           <div className='exchange-result-error'>
-            Error retrieving results.
+            Error retrieving results - please try again later.
           </div>
         );
       }
@@ -292,6 +291,16 @@ class App extends Component {
 
     const matches = this.state.matches;
     if (!matches || Object.keys(matches).length === 0) { return false; }
+
+    // little hacky way to assign from switch
+    const currencyLogo = (() => {
+      switch(this.state.localCurrency) {
+        case 'AUD':
+          return 'usd';
+        default:
+          return this.state.localCurrency.toLowerCase();
+      }
+    })();
 
     const results = Object.keys(matches).map((sym, i) => {
       const of = sym === this.state.localCurrency ? '' : ' of ' + sym;
@@ -308,7 +317,7 @@ class App extends Component {
         const url = 'https://www.cryptocompare.com' + img;
         coinImage = (<img className='exchange-result-thumbnail' alt='coin-thumbnail' src={url} />);
       } else {
-        const currencyClass = 'fa fa-fw fa-' + this.state.localCurrency.toLowerCase();
+        const currencyClass = 'fa fa-fw fa-' + currencyLogo;
         coinImage = (
           <div className='exchange-result-thumbnail'>
             <span className={currencyClass}></span>
@@ -371,6 +380,9 @@ class App extends Component {
     }, {
       value: 'GBP',
       label: 'British Pound'
+    }, {
+      value: 'AUD',
+      label: 'Australian Dollar'
     }];
 
     return (
