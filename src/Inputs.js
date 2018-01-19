@@ -29,15 +29,19 @@ class Inputs extends Component {
       <input type='number' min='0' value={this.props.sellAmount} onChange={this.props.updateSellAmount} className='exchange-currency-amount' />
     );
 
-    const exchangeNames = [{
-      value: 'Any',
-      label: 'Any'
-    }].concat(Object.keys(this.props.exchanges).map((e) => {
+    let exchangeNames = Object.keys(this.props.exchanges).map((e) => {
       return {
         value: e,
         label: e
       };
-    }));
+    });
+    exchangeNames.sort(function (a, b) {
+      return a.label.localeCompare(b.label);
+    })
+    exchangeNames = [{
+      value: 'Any',
+      label: 'Any'
+    }].concat(exchangeNames);
 
     const exchangeDisclaimer = (this.props.exchange && this.props.exchange !== 'Any') ? (
       <div className='exchange-disclaimer'>
@@ -45,7 +49,7 @@ class Inputs extends Component {
         are available, even if you see them on the exchange.
       </div>
     ) : <div className='exchange-disclaimer'>
-        DISCLAIMER: direct trading pairs may not be available as shown.
+        DISCLAIMER: direct trading pairs may not be available as shown. Data from certain exchanges may be missing.
       </div>;
 
     let exchangePairs = false;
