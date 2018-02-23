@@ -77,6 +77,10 @@ class Result extends Component {
   }
 
   render() {
+    if (this.props.selectedCoin.value === this.props.symbol) {
+      return false;
+    }
+
     const bestClassname = this.props.matches[this.props.symbol].best ? 'exchange-result best' : 'exchange-result';
     return (
       <div className={bestClassname}>
