@@ -124,17 +124,13 @@ class App extends Component {
   recalculate() {
     const selectedCoin = this.state.selectedCoin;
     const localCurrency = this.state.localCurrency;
-    console.log(this.state.coinResponse);
     const matches = this.state.coinResponse.RAW[selectedCoin.value];
-    console.log('rec', typeof matches, matches, Object.keys(matches), Object.values(matches));
 
     // transform price into something parsable
     Object.values(matches).forEach((data) => {
-      console.log(data);
       data.priceFloat = parseFloat(data.PRICE);
     });
     Object.keys(matches).forEach((key) => {
-      console.log(key);
       // delete if 0 volume
       if (matches[key].TOTALVOLUME24H === 0) {
         delete matches[key];

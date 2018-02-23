@@ -1,12 +1,11 @@
 import React, { Component } from 'react';
-import { number, string, object, func, array, bool } from 'prop-types'
+import { string, object, array, bool } from 'prop-types'
 
 class Result extends Component {
   static propTypes = {
-    key: number,
     symbol: string,
     localCurrency: string,
-    selectedCoin: string,
+    selectedCoin: object,
     matches: object,
     coins: array,
     currencyLogo: string,
@@ -37,7 +36,6 @@ class Result extends Component {
   renderConversion() {
     const result = this.props.matches[this.props.symbol];
     const of = this.props.symbol === this.props.localCurrency ? '' : ' of ' + this.props.symbol;
-    const market = result.LASTMARKET || result.MARKET;
 
     return this.props.buyMode ? (
       <div>
@@ -81,7 +79,7 @@ class Result extends Component {
   render() {
     const bestClassname = this.props.matches[this.props.symbol].best ? 'exchange-result best' : 'exchange-result';
     return (
-      <div className={bestClassname} key={this.props.key}>
+      <div className={bestClassname}>
         <div className='exchange-result-header'>
           {this.renderCoinImage()}
           {this.renderConversion()}
