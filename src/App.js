@@ -1,9 +1,11 @@
 /* global ga */
 import './App.css';
+import 'react-select/dist/react-select.css';
 import axios from 'axios';
 import coins from './coinlist.json';
 import exchanges from './exchanges.json'
-import Inputs from './Inputs.js';
+import Inputs from './components/Inputs.js';
+import Result from './components/Result.js';
 import Select from 'react-select';
 import React, { Component } from 'react';
 
@@ -51,11 +53,13 @@ class App extends Component {
     document.title =  window.location.hash !== '#sell' ? 'Buy This With That' : 'Sell This For That';
   }
 
+  // on initialize, determine if buy or sell mode
   componentDidMount() {
     window.addEventListener('hashchange', this.updateMode.bind(this, null), false);
     this.refresh();
   }
 
+  // switch between buy and sell mode
   updateMode() {
     this.setState({
       buyMode: window.location.hash !== '#sell'
@@ -65,6 +69,7 @@ class App extends Component {
     });
   }
 
+  // localStorage helpers
   updateSellAmount(e) {
     if (parseFloat(e.target.value) < 0) { return; }
     // update store
@@ -119,16 +124,19 @@ class App extends Component {
   recalculate() {
     const selectedCoin = this.state.selectedCoin;
     const localCurrency = this.state.localCurrency;
-
+    console.log(this.state.coinResponse);
     const matches = this.state.coinResponse.RAW[selectedCoin.value];
+    console.log('rec', typeof matches, matches, Object.keys(matches), Object.values(matches));
 
     // transform price into something parsable
     Object.values(matches).forEach((data) => {
+      console.log(data);
       data.priceFloat = parseFloat(data.PRICE);
     });
     Object.keys(matches).forEach((key) => {
-      // delete 0s
-      if (matches[key].VOLUME24HOUR === 0) {
+      console.log(key);
+      // delete if 0 volume
+      if (matches[key].TOTALVOLUME24H === 0) {
         delete matches[key];
       }
     });
@@ -167,6 +175,7 @@ class App extends Component {
     })
   }
 
+  // makes ajax calls to populate coinResponse and currencyResponse
   refresh() {
     this.setState({
       loading: true
@@ -176,6 +185,7 @@ class App extends Component {
     const exchange = (this.state.exchange && this.state.exchange !== 'Any') ? ('&e=' + this.state.exchange) : '';
     let convertTo = (this.state.localCurrency + ',' + this.state.exchangeTypes).split(',');
 
+    // if we're limiting to one exchange, see what pairs it supports
     if (this.state.exchange && this.state.exchange !== 'Any') {
       const availablePairs = this.state.exchanges[this.state.exchange] || {};
       if (selectedCoin.value in availablePairs) {
@@ -205,7 +215,6 @@ class App extends Component {
         });
         return;
       }
-
       const matches = res.data.DISPLAY[selectedCoin.value];
 
       axios.get('https://min-api.cryptocompare.com/data/pricemulti?fsyms=' + localCurrency + '&tsyms=' + Object.keys(matches).join(','))
@@ -220,7 +229,6 @@ class App extends Component {
           eventAction: selectedCoin.value,
           eventLabel: convertTo
         });
-
         this.setState({
           error: false,
           loading: false,
@@ -237,25 +245,6 @@ class App extends Component {
     });
   }
 
-  renderLoading() {
-    return (
-      <div id='loading-content'>
-        <div className='loading-wave-container'>
-          <div className='waves'>
-            <div className='wave-0'><div className='wave-face'></div></div>
-            <div className='wave-1'><div className='wave-face'></div></div>
-            <div className='wave-2'><div className='wave-face'></div></div>
-            <div className='wave-3'><div className='wave-face'></div></div>
-            <div className='wave-4'><div className='wave-face'></div></div>
-            <div className='wave-5'><div className='wave-face'></div></div>
-            <div className='wave-6'><div className='wave-face'></div></div>
-            <div className='wave-7'><div className='wave-face'></div></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   renderModeSwitcher() {
     const button = this.state.buyMode ? (
       <a href='#sell'><button>Sell this, for that</button></a>
@@ -270,9 +259,6 @@ class App extends Component {
   }
 
   renderResults() {
-    if (!this.state.coins) {
-      return this.renderLoading();
-    }
     if (this.state.error || !this.state.matches) {
       if (this.state.exchange && this.state.exchange !== 'Any') {
         return (
@@ -292,80 +278,57 @@ class App extends Component {
     const matches = this.state.matches;
     if (!matches || Object.keys(matches).length === 0) { return false; }
 
-    // little hacky way to assign from switch
-    const currencyLogo = (() => {
-      switch(this.state.localCurrency) {
-        case 'AUD':
-          return 'usd';
-        default:
-          return this.state.localCurrency.toLowerCase();
-      }
-    })();
+    let currencyLogo = this.state.localCurrency.toLowerCase();
+    // use dollar symbol for AUD
+    if (this.state.localCurrency === 'AUD') {
+      currencyLogo = 'usd';
+    }
 
     const results = Object.keys(matches).map((sym, i) => {
-      const of = sym === this.state.localCurrency ? '' : ' of ' + sym;
-      const best = matches[sym].best ? 'exchange-result best' : 'exchange-result';
-      const market = matches[sym].LASTMARKET || matches[sym].MARKET;
+      return <Result
+          key={i}
+          symbol={sym}
+          localCurrency={this.state.localCurrency}
+          selectedCoin={this.state.selectedCoin}
+          matches={matches}
+          coins={this.state.coins}
+          currencyLogo={currencyLogo}
+          buyMode={this.state.buyMode}
+        />
 
-      let coinImage;
-      if (sym !== this.state.localCurrency) {
-        const coin = this.state.coins.filter((c) => { return c.value === sym; })[0];
-        if (!coin) {
-          return false;
-        }
-        const img = coin.image;
-        const url = 'https://www.cryptocompare.com' + img;
-        coinImage = (<img className='exchange-result-thumbnail' alt='coin-thumbnail' src={url} />);
-      } else {
-        const currencyClass = 'fa fa-fw fa-' + currencyLogo;
-        coinImage = (
-          <div className='exchange-result-thumbnail'>
-            <span className={currencyClass}></span>
-          </div>
-        );
-      }
-
-      const conversionValue = this.state.buyMode ? (
-        <div>
-          1000 {this.state.localCurrency} {of} would buy you
-          <h3 className='exchange-result-title'>{matches[sym].buyingPower} {this.state.selectedCoin.value}</h3>
-        </div>
-      ) : (
-        <div>
-          {this.state.sellAmount} {this.state.selectedCoin.value} converted to {sym} is worth
-          <h3 className='exchange-result-title'>{parseFloat(matches[sym].buyingPower).toFixed(4)} {this.state.localCurrency}</h3>
-        </div>
-      );
-      return (
-        <div className={best} key={i}>
-          <div className='exchange-result-header'>
-            {coinImage}
-            {conversionValue}
-            1 {this.state.selectedCoin.value} costs <strong>{matches[sym].priceFloat} {sym}</strong>
-            <small>(1 {sym} = <strong>{(1/matches[sym].localRate).toFixed(6)} {this.state.localCurrency}</strong>)</small>
-            <div className='exchange-result-stats'>
-              <div className='row'>
-                <div><div className='arrow-up'></div>24h High</div>
-                <div><strong>{matches[sym].HIGH24HOUR}</strong></div>
-              </div>
-              <div className='row'>
-                <div><div className='arrow-down'></div>24h Low</div>
-                <div><strong>{matches[sym].LOW24HOUR}</strong></div>
-              </div>
-              <div className='exchange-result-details'>
-                <div>Market: {market}</div>
-                <small>Updated {(new Date(matches[sym].LASTUPDATE*1000)).toLocaleTimeString()}</small>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
     });
 
     return (
       <div className='exchange-output'>
         {results}
       </div>
+    );
+  }
+
+  renderFooter() {
+    if (this.state.loading) {
+      return false;
+    }
+    return (
+      <footer>
+        <div>
+          <p className='footer-thanks'>
+            If this tool has helped you, please leave a tip!
+          </p>
+          <p>
+            <code><strong>BTC:</strong> 18G9A5z2opkncGMLFnZTL8J2EvkUy1c8bE</code><br/>
+            <code><strong>ETH:</strong> 0xB72C1bf228096f7452150D493B04547538b0188e</code><br/>
+            <code><strong>LTC:</strong> LUwm8KRumrGNDwuMDyB1rLJwKv5zCcu3Ab</code><br/>
+          </p>
+        </div>
+        <div className='social'>
+          <a className="twitter-share-button" href="https://twitter.com/intent/tweet?text=Buy%20This%20With%20That%20-%20the%20simple%20cryptocurrency%20arbitrage%20calculator">
+            <span className='fa fa-twitter'></span>
+          </a>
+          <div className="fb-share-button" data-href="https://buythiswiththat.com/" data-layout="button" data-size="small" data-mobile-iframe="true"><a className="fb-xfbml-parse-ignore" rel='noopener noreferrer' target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fbuythiswiththat.com%2F&amp;src=sdkpreparse">Share</a></div>
+        </div>
+        <small>Data sourced from <a href='https://www.cryptocompare.com/api' rel='noopener noreferrer' target='_blank'>CryptoCompare</a>. Not all trading pairs shown are available in actuality. Data shown is not guaranteed to be accurate. Use this tool at your own discretion.</small>
+      </footer>
     );
   }
 
@@ -416,25 +379,7 @@ class App extends Component {
           />
         </div>
         {this.renderModeSwitcher()}
-        <footer>
-          <div className='social'>
-            <a className="twitter-share-button" href="https://twitter.com/intent/tweet?text=Buy%20This%20With%20That%20-%20the%20simple%20cryptocurrency%20arbitrage%20calculator">
-              <span className='fa fa-twitter'></span>
-            </a>
-            <div className="fb-share-button" data-href="https://buythiswiththat.com/" data-layout="button" data-size="small" data-mobile-iframe="true"><a className="fb-xfbml-parse-ignore" rel='noopener noreferrer' target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fbuythiswiththat.com%2F&amp;src=sdkpreparse">Share</a></div>
-          </div>
-          <div>
-            <p className='footer-thanks'>
-              If this tool has helped you, please leave a tip!
-            </p>
-            <p>
-              <strong>BTC:</strong> <code>18G9A5z2opkncGMLFnZTL8J2EvkUy1c8bE</code><br/>
-              <strong>ETH:</strong> <code>0xB72C1bf228096f7452150D493B04547538b0188e</code><br/>
-              <strong>LTC:</strong> <code>LUwm8KRumrGNDwuMDyB1rLJwKv5zCcu3Ab</code><br/>
-            </p>
-          </div>
-          <small>Data sourced from <a href='https://www.cryptocompare.com/api' rel='noopener noreferrer' target='_blank'>CryptoCompare</a>. Not all trading pairs shown are available in actuality. Data shown is not guaranteed to be accurate. Use this tool at your own discretion.</small>
-        </footer>
+        {this.renderFooter()}
       </div>
     );
   }

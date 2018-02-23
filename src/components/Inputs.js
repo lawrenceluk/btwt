@@ -1,6 +1,5 @@
 import React, { Component } from 'react';
-import './App.css';
-import 'react-select/dist/react-select.css';
+// import './App.css';
 import Select from 'react-select/dist/react-select';
 import { string, object, func, array, bool } from 'prop-types'
 
