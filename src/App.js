@@ -289,7 +289,13 @@ class App extends Component {
     }
 
     const matches = this.state.matches;
-    if (!matches || Object.keys(matches).length === 0) { return false; }
+    if (!matches || Object.keys(matches).length === 0) {
+      return (
+        <div className='exchange-result-error'>
+          Unfortunately, no trading pairs were found.
+        </div>
+      );
+    }
 
     let currencyLogo = this.state.localCurrency.toLowerCase();
     // use dollar symbol for AUD
@@ -311,7 +317,6 @@ class App extends Component {
           buyAmount={this.state.buyAmount}
           sellAmount={this.state.sellAmount}
         />
-
     });
 
     return (
