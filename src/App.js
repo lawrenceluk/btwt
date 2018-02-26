@@ -20,6 +20,7 @@ class App extends Component {
     const savedExchange = canStore && localStorage.getItem('exchange') ? localStorage.getItem('exchange') : 'Any';
     const savedCurrency = canStore && localStorage.getItem('currency') ? localStorage.getItem('currency') : 'USD';
     const savedSellAmount = canStore && localStorage.getItem('sellAmount') ? localStorage.getItem('sellAmount') : '100';
+    const savedBuyAmount = canStore && localStorage.getItem('buyAmount') ? localStorage.getItem('buyAmount') : '100';
     const compareCoins = canStore && localStorage.getItem('buyCompareCoins') ?
      (localStorage.getItem('buyCompareCoins') || 'BTC,ETH') : 'BTC,ETH';
     const coinList = Object.values(coins.Data).map((c) => {
@@ -44,6 +45,7 @@ class App extends Component {
       exchangeTypes: compareCoins,
       localCurrency: savedCurrency,
       sellAmount: savedSellAmount,
+      buyAmount: savedBuyAmount,
       coinResponse: {},
       currencyResponse: {},
       exchanges: exchanges,
@@ -77,6 +79,16 @@ class App extends Component {
     // update state
     this.setState({
       sellAmount: e.target.value
+    }, () => { this.recalculate(); });
+  }
+
+  updateBuyAmount(e) {
+    if (parseFloat(e.target.value) < 0) { return; }
+    // update store
+    localStorage.setItem('buyAmount', e.target.value);
+    // update state
+    this.setState({
+      buyAmount: e.target.value
     }, () => { this.recalculate(); });
   }
 
@@ -125,6 +137,7 @@ class App extends Component {
     const selectedCoin = this.state.selectedCoin;
     const localCurrency = this.state.localCurrency;
     const matches = this.state.coinResponse.RAW[selectedCoin.value];
+    delete matches[selectedCoin.value];
 
     // transform price into something parsable
     Object.values(matches).forEach((data) => {
@@ -139,7 +152,7 @@ class App extends Component {
 
     if (matches[localCurrency]) {
       if (this.state.buyMode) {
-        matches[localCurrency].buyingPower = (1000 / matches[localCurrency].priceFloat).toFixed(6);
+        matches[localCurrency].buyingPower = (this.state.buyAmount / matches[localCurrency].priceFloat).toFixed(6);
       } else {
         matches[localCurrency].buyingPower = (matches[localCurrency].priceFloat).toFixed(6) * (parseFloat(this.state.sellAmount) || 1);
       }
@@ -152,7 +165,7 @@ class App extends Component {
     Object.keys(conversions).forEach((sym) => {
       if (matches[sym]) {
         if (this.state.buyMode) {
-          matches[sym].buyingPower = ((conversions[sym]*1000) / matches[sym].priceFloat).toFixed(6);
+          matches[sym].buyingPower = ((conversions[sym]*this.state.buyAmount) / matches[sym].priceFloat).toFixed(6);
         } else {
           matches[sym].buyingPower = ((1 / conversions[sym]) * matches[sym].priceFloat).toFixed(6) * (parseFloat(this.state.sellAmount) || 1);
         }
@@ -162,12 +175,16 @@ class App extends Component {
     });
 
     // get best buying power
-    var best = Object.values(matches).sort((a, b) => { return parseFloat(b.buyingPower) - parseFloat(a.buyingPower); })[0];
-    matches[best.symbol].best = true;
+    const sortedMatches = Object.values(matches).sort((a, b) => { return parseFloat(b.buyingPower) - parseFloat(a.buyingPower); });
+
+    const orderedMatches = {};
+    sortedMatches.forEach((match) => {
+      orderedMatches[match.symbol] = match;
+    })
 
     this.setState({
       loading: false,
-      matches: matches
+      matches: orderedMatches
     })
   }
 
@@ -283,6 +300,7 @@ class App extends Component {
     const results = Object.keys(matches).map((sym, i) => {
       return <Result
           key={i}
+          order={i}
           symbol={sym}
           localCurrency={this.state.localCurrency}
           selectedCoin={this.state.selectedCoin}
@@ -290,6 +308,8 @@ class App extends Component {
           coins={this.state.coins}
           currencyLogo={currencyLogo}
           buyMode={this.state.buyMode}
+          buyAmount={this.state.buyAmount}
+          sellAmount={this.state.sellAmount}
         />
 
     });
@@ -359,8 +379,11 @@ class App extends Component {
           updateCoin={this.updateCoin.bind(this)}
           exchangeTypes={this.state.exchangeTypes}
           updateExchangeTypes={this.updateExchangeTypes.bind(this)}
+          localCurrency={this.state.localCurrency}
           sellAmount={this.state.sellAmount}
+          buyAmount={this.state.buyAmount}
           updateSellAmount={this.updateSellAmount.bind(this)}
+          updateBuyAmount={this.updateBuyAmount.bind(this)}
           updateExchange={this.updateExchange.bind(this)}
           availablePairs={this.state.availablePairs}
         />

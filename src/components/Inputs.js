@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-// import './App.css';
 import Select from 'react-select/dist/react-select';
 import { string, object, func, array, bool } from 'prop-types'
 
@@ -24,9 +23,12 @@ class Inputs extends Component {
       backgroundImage: "url('https://www.cryptocompare.com" + this.props.selectedCoin.image + "')"
     };
     const buy = this.props.buyMode ? 'buy' : 'sell';
-    const sellAmount = this.props.buyMode ? false : (
+    const amountInput = this.props.buyMode ?
+      <input type='number' min='0' value={this.props.buyAmount} onChange={this.props.updateBuyAmount} className='exchange-currency-amount' />
+     : (
       <input type='number' min='0' value={this.props.sellAmount} onChange={this.props.updateSellAmount} className='exchange-currency-amount' />
     );
+    const of = this.props.buyMode ? (<span>{this.props.localCurrency} worth of</span>) : false;
 
     let exchangeNames = Object.keys(this.props.exchanges).map((e) => {
       return {
@@ -45,7 +47,7 @@ class Inputs extends Component {
     const exchangeDisclaimer = (this.props.exchange && this.props.exchange !== 'Any') ? (
       <div className='exchange-disclaimer'>
         DISCLAIMER: data is sourced from CryptoCompare and may be missing or inaccurate. Not all trading pairs
-        are available, even if you see them on the exchange.
+        are available here, even if you see them on the exchange.
       </div>
     ) : <div className='exchange-disclaimer'>
         DISCLAIMER: direct trading pairs may not be available as shown. Data from certain exchanges may be missing.
@@ -66,7 +68,7 @@ class Inputs extends Component {
     return (
       <div className='exchange-input'>
         <div className='exchange-input-image' style={coinImage}></div>
-        <div>I want to {buy} {sellAmount}
+        <div>I want to {buy} {amountInput} {of}
           <Select
             className='exchange-currency-types'
             options={this.props.coins}

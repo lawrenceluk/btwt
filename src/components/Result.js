@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { string, object, array, bool } from 'prop-types'
+import { string, object, array, bool, number } from 'prop-types'
 
 class Result extends Component {
   static propTypes = {
@@ -10,6 +10,9 @@ class Result extends Component {
     coins: array,
     currencyLogo: string,
     buyMode: bool,
+    sellAmount: string,
+    buyAmount: string,
+    order: number
   }
 
   renderCoinImage() {
@@ -39,13 +42,13 @@ class Result extends Component {
 
     return this.props.buyMode ? (
       <div>
-        1000 {this.props.localCurrency} {of} would buy you
+        {Number(this.props.buyAmount).toFixed(2).toLocaleString('currency', this.props.localCurrency)} {this.props.localCurrency} {of} would buy you
         <h3 className='exchange-result-title'>{result.buyingPower} {this.props.selectedCoin.value}</h3>
       </div>
     ) : (
       <div>
         {this.props.sellAmount} {this.props.selectedCoin.value} converted to {this.props.symbol} is worth
-        <h3 className='exchange-result-title'>{parseFloat(result.buyingPower).toFixed(4)} {this.props.localCurrency}</h3>
+        <h3 className='exchange-result-title'>{Number(result.buyingPower).toFixed(2).toLocaleString('currency', this.props.localCurrency)} {this.props.localCurrency}</h3>
       </div>
     );
   }
@@ -77,11 +80,7 @@ class Result extends Component {
   }
 
   render() {
-    if (this.props.selectedCoin.value === this.props.symbol) {
-      return false;
-    }
-
-    const bestClassname = this.props.matches[this.props.symbol].best ? 'exchange-result best' : 'exchange-result';
+    const bestClassname = this.props.order === 0 ? 'exchange-result best' : 'exchange-result';
     return (
       <div className={bestClassname}>
         <div className='exchange-result-header'>
